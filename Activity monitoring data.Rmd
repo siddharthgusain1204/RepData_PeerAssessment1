@@ -2,7 +2,9 @@
 title: "Activity Monitoring - Reproducible Research"
 author: "Siddharth Gusain"
 date: "October 1, 2020"
-output: html_document
+output:
+  pdf_document: default
+  html_document: default
 ---
 
 ##Loading and preprocessing the data
@@ -16,6 +18,7 @@ download.file("https://d396qusza40orc.cloudfront.net/repdata%2Fdata%2Factivity.z
 data <- read.csv(unz("activity.zip","activity.csv"),stringsAsFactors = FALSE)
 library(lubridate)
 library(dplyr)
+library(ggplot2)
 data$date<-ymd(data$date)
 ```
 
@@ -24,10 +27,11 @@ The summary of sum, mean and median of steps per day is given below.
 
 ```{r}
 steps_summary_date <- data %>% group_by(date) %>% summarise(steps = sum (steps))
-sum(steps_summary_date$steps,na.rm = T)
-mean(steps_summary_date$steps,na.rm = T)
-median(steps_summary_date$steps,na.rm = T)
+sumsteps <- sum(steps_summary_date$steps,na.rm = T)
+meansteps <- as.integer(mean(steps_summary_date$steps,na.rm = T))
+mediansteps <- median(steps_summary_date$steps,na.rm = T)
 ```
+As calculated in the code chunk above, the sum is **`r sumsteps`**, the mean is **`r meansteps`** and the median is **`r mediansteps`**.
 
 Furthermore, a histogram of the total number of steps per day is given below:
 ```{r echo = TRUE, message = FALSE}
@@ -46,4 +50,50 @@ plot(activitypatterndata$interval,activitypatterndata$steps,type="l",xlab = "5-m
 The details of interval wtih maximum number of average steps is given below.
 ```{r}
 activitypatterndata[which.max(activitypatterndata$steps),]
+```
+
+##Imputing missing values
+Using the sum function to calculate the total number of missing values in the "steps" variable as "date" and "interval"" have no missing values. 
+
+```{r}
+sumna <- sum(is.na(data$steps))
+```
+The total missing values in the steps variable of the dataset are **`r sumna`**.
+
+I will now replace the "NA" values with the mean value of that particular interval's remaining values.
+
+```{r}
+replacewithmean <- function(x){replace(x, is.na(x), mean(x, na.rm = TRUE))}
+completedata <- data %>% group_by(interval) %>% mutate( steps = replacewithmean(steps))
+```
+The total number of steps taken each day as per the dataset without missing values can be seen as below:
+
+```{r echo = TRUE, message = FALSE}
+plotdatacomplete <- completedata %>% group_by(date) %>% summarise(steps = sum(steps))
+hist(plotdatacomplete$steps, breaks = 15, xlab = "Number of steps per day", main = "Histogram of daily steps per day", col = "blue")
+rug(plotdatacomplete$steps)
+```
+
+```{r}
+steps_summary_completedata <- completedata %>% group_by(date) %>% summarise(steps = sum (steps))
+meantotal <- as.integer(mean(steps_summary_completedata$steps,na.rm = T))
+mediantotal <- as.integer(median(steps_summary_completedata$steps,na.rm = T))
+```
+The mean of steps per day from the dataset without missing values is **`r meantotal`** and the median from the same dataset is **`r mediantotal`**.
+
+```{r}
+diffmean <- meantotal - meansteps
+diffmedian <- mediantotal - mediansteps
+```
+
+The difference between means from the two data sets is `r `diffmean`and the difference between medians from the two data sets is `r `diffmedian`.
+
+##Difference in activity patterns between weekdays and weekends
+
+```{r}
+completedata$day <- weekdays(completedata$date)
+completedata$weekday <- ifelse(completedata$day == "Saturday" | completedata$day == "Sunday", "Weekend", "Weekday")
+completedata$weekday <- as.factor(completedata$weekday)
+completedata <- completedata %>% group_by(weekday,interval) %>% summarise(steps = mean(steps, na.rm=T))
+qplot(x = interval, y = steps, data = completedata, facets = weekday~.,geom = "path",color = weekday)
 ```
