@@ -1,0 +1,49 @@
+---
+title: "Activity Monitoring - Reproducible Research"
+author: "Siddharth Gusain"
+date: "October 1, 2020"
+output: html_document
+---
+
+##Loading and preprocessing the data
+
+We will start by downloading the data from [Activity monitoring data](https://d396qusza40orc.cloudfront.net/repdata%2Fdata%2Factivity.zip), the data was downloaded at `r Sys.Date()`.
+
+Methodology for downloading and preprocessing is given below.
+
+```{r echo = TRUE, results = "hide", message = FALSE}
+download.file("https://d396qusza40orc.cloudfront.net/repdata%2Fdata%2Factivity.zip",destfile = "activity.zip")
+data <- read.csv(unz("activity.zip","activity.csv"),stringsAsFactors = FALSE)
+library(lubridate)
+library(dplyr)
+data$date<-ymd(data$date)
+```
+
+##Total number of steps
+The summary of sum, mean and median of steps per day is given below.
+
+```{r}
+steps_summary_date <- data %>% group_by(date) %>% summarise(steps = sum (steps))
+sum(steps_summary_date$steps,na.rm = T)
+mean(steps_summary_date$steps,na.rm = T)
+median(steps_summary_date$steps,na.rm = T)
+```
+
+Furthermore, a histogram of the total number of steps per day is given below:
+```{r echo = TRUE, message = FALSE}
+plotdata <- data %>% group_by(date) %>% summarise(steps = sum(steps))
+hist(plotdata$steps, breaks = 15, xlab = "Number of steps per day", main = "Histogram of daily steps per day", col = "green")
+rug(plotdata$steps)
+```
+
+##Average daily activity pattern
+A time series plot of 5-minute intervals against average number of steps taken across those intervals is given below.
+```{r}
+activitypatterndata <- data %>% select(steps,interval) %>% group_by(interval) %>% summarise(steps=mean(steps,na.rm = T))
+plot(activitypatterndata$interval,activitypatterndata$steps,type="l",xlab = "5-minute intervals", ylab = "Average number of steps taken")
+```
+
+The details of interval wtih maximum number of average steps is given below.
+```{r}
+activitypatterndata[which.max(activitypatterndata$steps),]
+```
